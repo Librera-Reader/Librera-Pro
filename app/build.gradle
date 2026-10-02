@@ -1,0 +1,508 @@
+plugins {
+    alias(libs.plugins.androidApplication)
+    alias(libs.plugins.googleServices)
+}
+
+def taskName = getGradle().getStartParameter().getTaskRequests().toString()
+
+
+ext {
+    FDroidCodeNumber = 7398
+    FDroidVersionNumber = "9.6.39"
+}
+
+
+
+println " --------------------"
+println " taskName: " + taskName
+println " --------------------"
+
+ext {
+    if (!taskName.contains("Fdroid")) {
+        codeNumber = Integer.parseInt(appCodeNumber)
+        versionNumber = appVersionNumberBase + "." + appVersionNumberIndex
+    } else {
+        codeNumber = FDroidCodeNumber
+        versionNumber = FDroidVersionNumber
+    }
+
+    // The MuPDF the native library was built from, when the build script says (-Pmupdf=1.28.5):
+    // it goes into the names of the APKs, bundles and mappings, so builds of both can sit side by side
+    mupdfVersion = project.findProperty("mupdf")
+    mupdfSuffix = mupdfVersion ? "-mupdf" + mupdfVersion : ""
+
+    println ""
+    println "Version: [" + versionNumber + " - " + codeNumber + "]" + (mupdfVersion ? " MuPDF " + mupdfVersion : "")
+}
+
+android {
+    compileSdk = libs.versions.compileSdk.get().toInteger()
+
+    namespace = "com.foobnix.pdf.info"
+
+    defaultConfig {
+        namespace = "com.foobnix.pdf.info"
+        minSdk = libs.versions.minSdk.get().toInteger()
+        targetSdk = libs.versions.targetSdk.get().toInteger()
+        versionCode = codeNumber
+        versionName = versionNumber
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    configurations {
+        all {
+            exclude module: 'httpclient'
+            exclude module: 'commons-logging'
+        }
+    }
+
+    lint {
+        abortOnError = true
+        ignoreWarnings = true
+        checkReleaseBuilds = taskName.contains("Pro")
+    }
+
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+            returnDefaultValues = true
+        }
+    }
+
+    signingConfigs {
+        release {
+            storeFile file(RELEASE_STORE_FILE)
+            storePassword RELEASE_STORE_PASSWORD
+            keyAlias RELEASE_KEY_ALIAS
+            keyPassword RELEASE_KEY_PASSWORD
+        }
+    }
+
+    buildTypes {
+        release {
+            // R8: shrink, optimize and obfuscate the DEX (Google Play requires >= 25% in each category)
+            minifyEnabled = true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            //shrinkResources = false
+            signingConfig = signingConfigs.release
+            debuggable = false
+        }
+        debug {
+            debuggable = true
+        }
+    }
+
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.toVersion(libs.versions.jvmTarget.get())
+        targetCompatibility = JavaVersion.toVersion(libs.versions.jvmTarget.get())
+    }
+
+    tasks.withType(JavaCompile) {
+        options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+    }
+
+    splits {
+        abi {
+            enable = true
+            reset()
+            include "x86", "x86_64", "armeabi-v7a", "arm64-v8a"
+            universalApk = true
+        }
+    }
+
+    flavorDimensions.add("version")
+    productFlavors {
+        fdroid {
+            minSdk = libs.versions.minSdk.get().toInteger()
+            dimension = "version"
+            applicationId = "com.foobnix.pro.pdf.reader"
+            manifestPlaceholders = [
+                    appName      : "Librera FD",
+                    appIcon      : "@mipmap/icon_pdf_pro",
+                    appRoundIcon : "@mipmap/icon_pdf_pro",
+                    appGdriveKey : "",
+                    admobAppId   : "",
+                    admobBannerId: "",
+                    admobFullId  : "",
+                    admobRewardId  : "",
+                    appSafeMode  : "true"
+            ]
+            versionNameSuffix = '-fdroid'
+        }
+        librera {
+            dimension = "version"
+            applicationId = "com.foobnix.pdf.reader"
+            manifestPlaceholders = [
+                    appName      : "Librera",
+                    appIcon      : "@mipmap/icon_pdf_reader",
+                    appRoundIcon : "@mipmap/icon_pdf_reader",
+                    appGdriveKey : librera_appGdriveKey,
+                    admobAppId   : librera_admobAppId,
+                    admobBannerId: librera_admobBannerId,
+                    admobFullId  : librera_admobFullId,
+                    admobRewardId  : librera_admobRewardId,
+                    appSafeMode  : "false"
+            ]
+        }
+
+        pro {
+            dimension = "version"
+            applicationId = "com.foobnix.pro.pdf.reader"
+            manifestPlaceholders = [
+                    appName      : "Librera",
+                    appIcon      : "@mipmap/icon_pdf_pro",
+                    appRoundIcon : "@mipmap/icon_pdf_pro",
+                    appGdriveKey : pro_appGdriveKey,
+                    admobAppId   : "",
+                    admobBannerId: "",
+                    admobFullId  : "",
+                    admobRewardId  : "",
+                    appSafeMode  : "false"
+            ]
+        }
+        pdf_classic {
+            dimension = "version"
+            applicationId = "classic.pdf.reader.viewer.djvu.epub.fb2.txt.mobi.book.reader.lirbi.libri"
+            manifestPlaceholders = [
+                    appName      : "PDF Reader",
+                    appIcon      : "@mipmap/icon_pdf_classic",
+                    appRoundIcon : "@mipmap/launcher_classic",
+                    appGdriveKey : pdf_classic_appGdriveKey,
+                    admobAppId   : pdf_classic_admobAppId,
+                    admobBannerId: pdf_classic_admobBannerId,
+                    admobFullId  : pdf_classic_admobFullId,
+                    admobRewardId: pdf_classic_admobRewardId,
+                    appSafeMode  : "true"
+            ]
+        }
+        ebooka {
+            dimension = "version"
+            applicationId = "droid.reader.book.epub.mobi.pdf.djvu.fb2.txt.azw.azw3"
+            manifestPlaceholders = [
+                    appName      : "Book Reader",
+                    appIcon      : "@mipmap/icon_pdf_droid",
+                    appRoundIcon : "@mipmap/launcher_droid",
+                    appGdriveKey : ebooka_appGdriveKey,
+                    admobAppId   : ebooka_admobAppId,
+                    admobBannerId: ebooka_admobBannerId,
+                    admobFullId  : ebooka_admobFullId,
+                    admobRewardId: ebooka_admobRewardId,
+                    appSafeMode  : "false"
+            ]
+        }
+        pdf_v2 {
+            dimension = "version"
+            applicationId = "pdf.pdf.reader"
+            manifestPlaceholders = [
+                    appName      : "PDF Reader",
+                    appIcon      : "@mipmap/icon_pdf_2",
+                    appRoundIcon : "@mipmap/launcher_pdf_v2",
+                    appGdriveKey : pdf_v2_appGdriveKey,
+                    admobAppId   : pdf_v2_admobAppId,
+                    admobBannerId: pdf_v2_admobBannerId,
+                    admobFullId  : pdf_v2_admobFullId,
+                    admobRewardId: pdf_v2_admobRewardId,
+                    appSafeMode  : "false"
+            ]
+        }
+        tts_reader {
+            dimension = "version"
+            applicationId = "tts.reader"
+            manifestPlaceholders = [
+                    appName      : "TTS Reader",
+                    appIcon      : "@mipmap/icon_tts_reader_app",
+                    appRoundIcon : "@mipmap/launcher_tts_reader_app",
+                    appGdriveKey : tts_reader_appGdriveKey,
+                    admobAppId   : tts_reader_admobAppId,
+                    admobBannerId: tts_reader_admobBannerId,
+                    admobFullId  : tts_reader_admobFullId,
+                    admobRewardId: tts_reader_admobRewardId,
+                    appSafeMode  : "false"
+            ]
+        }
+        epub_reader {
+            dimension = "version"
+            applicationId = "epub.reader"
+            manifestPlaceholders = [
+                    appName      : "Epub Reader",
+                    appIcon      : "@mipmap/icon_epub_reader",
+                    appRoundIcon : "@mipmap/launcher_epub_reader",
+                    appGdriveKey : epub_reader_appGdriveKey,
+                    admobAppId   : epub_reader_admobAppId,
+                    admobBannerId: epub_reader_admobBannerId,
+                    admobFullId  : epub_reader_admobFullId,
+                    admobRewardId: epub_reader_admobRewardId,
+                    appSafeMode  : "false"
+            ]
+        }
+    }
+
+    sourceSets {
+        fdroid { assets.srcDirs = ['src/fdroid/assets', 'src/fdroid/assets/'] }
+        // code for both JVM and device tests, like the old footnote code to compare with
+        test.java.srcDirs += 'src/sharedTest/java'
+        androidTest.java.srcDirs += 'src/sharedTest/java'
+    }
+
+    buildFeatures {
+        // IDjvuRenderer: the DjVu render service LibreraX binds to.
+        aidl = true
+    }
+
+    packagingOptions {
+        resources {
+            excludes.addAll(
+                    'META-INF/DEPENDENCIES',
+                    'META-INF/NOTICE',
+                    'META-INF/LICENSE',
+                    'META-INF/LICENSE.txt',
+                    'META-INF/NOTICE.txt',
+                    'META-INF/INDEX.LIST',
+            )
+        }
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    proImplementation project(':libPro')
+    fdroidImplementation project(':libPro')
+    implementation project(':libReflow')
+
+    //implementation project(":shared")
+
+    //compose
+
+    //implementation project(':appLibDrive')
+
+
+/** AndroidX **/
+    implementation(libs.cardview)
+    implementation(libs.recyclerview)
+    implementation(libs.work.runtime)
+    implementation(libs.legacy.support.v4)
+    implementation(libs.appcompat)
+    implementation(libs.activity)
+
+    implementation(libs.eventbus)
+    implementation(libs.greenrobot.greendao)
+    implementation(libs.greendao.api)
+
+
+    implementation(libs.jsoup)
+    implementation(libs.juniversalchardet)
+
+    implementation(libs.okhttp3)
+    implementation(libs.okhttp.digest)
+    implementation(libs.okio.parent)
+
+
+
+
+    implementation(libs.rtfparserkit)
+
+    implementation(libs.mammoth)
+    implementation(libs.stax.api)
+
+
+    implementation(libs.zip4j)
+    implementation(libs.glide)
+    annotationProcessor(libs.glide.compiler)
+
+    implementation(libs.commons.logging.api)
+    implementation(libs.guava)
+
+    implementation('org.commonmark:commonmark:0.29.0')
+    implementation ('org.commonmark:commonmark-ext-gfm-tables:0.30.0')
+
+
+
+
+    def dep_free = project(':libDepFree')
+
+
+    libreraImplementation dep_free
+    pdf_v2Implementation dep_free
+    ebookaImplementation dep_free
+    tts_readerImplementation dep_free
+    pdf_classicImplementation dep_free
+    epub_readerImplementation dep_free
+    def dep_pro = project(':libDepPro')
+
+
+    libreraImplementation dep_pro
+    pdf_v2Implementation dep_pro
+    ebookaImplementation dep_pro
+    tts_readerImplementation dep_pro
+    pdf_classicImplementation dep_pro
+    epub_readerImplementation dep_pro
+    proImplementation dep_pro
+
+/** Testing **/
+    testImplementation(libs.junit)
+    testImplementation(libs.mockito.core)
+    testImplementation(libs.kxml2)
+    androidTestImplementation(libs.runner)
+    androidTestImplementation(libs.androidx.junit)
+
+}
+
+
+// AGP 9 removed applicationVariants: per-ABI version codes and the APK names now come
+// from the Variant API, with the same values as before.
+androidComponents {
+    def abiCodes = ['armeabi-v7a': 0, 'arm64-v8a': 1, 'x86': 2, 'x86_64': 3]
+    onVariants(selector().all()) { variant ->
+        def flavor = variant.flavorName ? variant.flavorName.capitalize() : ""
+        variant.outputs.each { output ->
+            def abi = output.filters.find { it.filterType.name() == "ABI" }?.identifier
+            if (abi != null) {
+                def abiName = abi.replace("arm64-v8a", "arm64").replace("armeabi-v7a", "arm")
+                output.versionCode.set(abiCodes.get(abi, 0) + codeNumber)
+                output.outputFileName.set("Librera ${flavor}-${versionNumber}${mupdfSuffix}-${abiName}.apk")
+            } else {
+                output.versionCode.set(codeNumber)
+                output.outputFileName.set("Librera ${flavor}-${versionNumber}${mupdfSuffix}-uni.apk")
+            }
+        }
+    }
+}
+
+tasks.register("copyApks") {
+    if (project.hasProperty('beta') || project.hasProperty("release")) {
+        println "My Task: [copy apks]"
+
+        // Where the builds go: librera_builds_dir in the global ~/.gradle/gradle.properties
+        def buildsDir = project.findProperty("librera_builds_dir")
+        if (!buildsDir) {
+            throw new GradleException("librera_builds_dir is not set in ~/.gradle/gradle.properties")
+        }
+
+        // Only the builds of the same MuPDF are replaced: the builds of the other one, of the same
+        // Librera, stay next to them (the beta script makes one pass per MuPDF)
+        def own = mupdfSuffix ? "*${mupdfSuffix}*" : "*"
+
+        delete fileTree(buildsDir).include("${own}.apk", "${own}.aab", "${own}-mapping.txt")
+
+        // Second destination of the betas, the folder the testers read: librera_beta_dir in the
+        // global ~/.gradle/gradle.properties. Unset, a beta only goes to buildsDir.
+        def betaDir = project.hasProperty("beta") ? project.findProperty("librera_beta_dir") : null
+        if (betaDir) {
+            // Only our own builds: the folder holds the APKs of other projects as well
+            delete fileTree(betaDir).include("Librera ${own}.apk", "Librera ${own}.aab")
+        }
+
+        // The version's own folder is emptied only when a release is about to be copied into it
+        if (project.hasProperty("release")) {
+            delete fileTree("$buildsDir/$versionNumber").include("${own}.apk", "${own}.aab", "${own}-mapping.txt")
+        }
+
+        android.productFlavors.each { productFlavor ->
+            {
+                def flavor = productFlavor.name
+                def appName = "Librera ${flavor.capitalize()}-${flavor == 'fdroid' ? FDroidVersionNumber : versionNumber}${mupdfSuffix}"
+
+                //println "====  " + variant.buildType.name + " " +  flavor
+
+                def list = []
+
+                if (project.hasProperty("beta")) {
+                    list.add(buildsDir)
+                    if (betaDir) {
+                        list.add(betaDir)
+                    }
+                }
+
+
+                if (project.hasProperty("release")) {
+                    list.add("$buildsDir/$versionNumber")
+                }
+                list.each { dest ->
+
+                    copy {
+                        from(file("build/outputs/apk/${flavor}/release/")) {
+                            include "*.apk"
+                        }
+                        // App Bundle: build/outputs/bundle/<flavor>Release/app-<flavor>-release.aab
+                        from(file("build/outputs/bundle/${flavor}Release/")) {
+                            include "*.aab"
+                            rename { "${appName}.aab" }
+                        }
+                        // R8 mapping for deobfuscating crash stack traces: release folder, Librera and Pro only
+                        if (project.hasProperty("release") && dest.endsWith("/$versionNumber") && flavor in ["librera", "pro"]) {
+                            from(file("build/outputs/mapping/${flavor}Release/")) {
+                                include "mapping.txt"
+                                rename { "${appName}-mapping.txt" }
+                            }
+                        }
+                        into file(dest)
+                        println "Copy: '" + flavor + "' to " + dest
+
+                        eachFile {
+                            project.file(dest).mkdirs()
+                            if (!file(dest).exists()) {
+                                it.exclude()
+                            }
+                        }
+
+                    }
+
+
+                }
+            }
+        }
+    }
+}
+
+
+tasks.register("incVersion") {
+    File progejectDir = layout.projectDirectory.getAsFile()
+    doLast {
+        Properties props = new Properties()
+        println "progejectDir :" + progejectDir
+
+        File propsFile = new File(progejectDir, 'gradle.properties')
+
+        propsFile.withInputStream { props.load(it) }
+
+        int appCodeNumber = Integer.parseInt(props.getProperty('appCodeNumber'))
+        appCodeNumber += 4
+
+        int appVersionNumberIndex = Integer.parseInt(props.getProperty('appVersionNumberIndex'))
+        appVersionNumberIndex += 1
+
+        props.setProperty('appCodeNumber', "" + appCodeNumber)
+        props.setProperty('appVersionNumberIndex', "" + appVersionNumberIndex)
+
+        // Closed before the task ends, so the next gradle run reads the whole file.
+        propsFile.withWriter { props.store(it, null) }
+
+        println "My Task: [incVersion]"
+    }
+}
+
+tasks.register("updateFDroid") {
+    File projectDir = layout.projectDirectory.getAsFile()
+    doLast {
+        Properties props = new Properties()
+        File propsFile = new File(projectDir, 'gradle.properties')
+        propsFile.withInputStream { props.load(it) }
+
+        String code = props.getProperty('appCodeNumber')
+        String version = props.getProperty('appVersionNumberBase') + "." + props.getProperty('appVersionNumberIndex')
+
+        // Written into build.gradle itself, so F-Droid's own build of the source carries it.
+        File buildFile = new File(projectDir, 'build.gradle')
+        String text = buildFile.getText('UTF-8')
+                .replaceFirst(/FDroidCodeNumber = \d+/, "FDroidCodeNumber = " + code)
+                .replaceFirst(/FDroidVersionNumber = "[^"]*"/, "FDroidVersionNumber = \"" + version + "\"")
+
+        if (!text.contains("FDroidCodeNumber = " + code) || !text.contains("FDroidVersionNumber = \"" + version + "\"")) {
+            throw new GradleException("updateFDroid: FDroidCodeNumber/FDroidVersionNumber not found in build.gradle")
+        }
+        buildFile.setText(text, 'UTF-8')
+
+        println "My Task: [updateFDroid] " + version + " - " + code
+    }
+}
